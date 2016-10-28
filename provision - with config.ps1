@@ -1,4 +1,24 @@
-﻿# Sign in to Azure
+﻿#input parameters
+param (
+    [string]$token = $(throw "-token is required. This is the master label for the Resource Group, and all resources."), 
+    [string]$username = $(throw "-username is required."),
+    [string]$password = $( Read-Host -asSecureString "Input password" ),
+    [string]$sshusername = $(throw "-username is required."),
+    [string]$sshpassword = $( Read-Host -asSecureString "Input sshpassword" ),
+    [string]$location = "Australia Southeast"   ,
+
+
+
+)
+
+#create credentials from parameter username/password combinations
+$credentials = new-object -typename System.Management.Automation.PSCredential `
+         -argumentlist $username, $password
+
+$sshCredentials = new-object -typename System.Management.Automation.PSCredential `
+         -argumentlist $sshusername, $sshpassword
+
+# Sign in to Azure
 try 
 {
     $subscriptiondetails = Get-AzureRmSubscription
@@ -14,14 +34,13 @@ finally
 
 
 #variable setup
-$token ="hdinsightsjb"
 $resourceGroupName = $token + "rg"      # Provide a Resource Group name
 $vnetName = $token + "vnet"             #provide virtual network name
 $subnetName = $token + "hdisubnet"      # Provide a virtual network subnet name
 $clusterName = $token
 $defaultStorageAccountName = $token + "store"   # Provide a Storage account name
 $defaultStorageContainerName = $token + "container"
-$location = "Australia Southeast"     # Change the location if needed
+  # Change the location if needed
 $clusterNodes = 1           # The number of nodes in the HDInsight cluster
 $sqlservername = $token + "dbserver"
 $sqldatabasename = $token + "db"
@@ -44,8 +63,7 @@ $destContext = New-AzureStorageContext -StorageAccountName $defaultStorageAccoun
 New-AzureStorageContainer -Name $defaultStorageContainerName -Context $destContext
 
 # Create an HDInsight cluster
-$credentials = Get-Credential -Message "Enter Cluster user credentials" -UserName "admin"
-$sshCredentials = Get-Credential -Message "Enter SSH user credentials"
+
 
 # The location of the HDInsight cluster must be in the same data center as the Storage account.
 $location = Get-AzureRmStorageAccount -ResourceGroupName $resourceGroupName -StorageAccountName $defaultStorageAccountName | %{$_.Location}
@@ -68,8 +86,10 @@ $vnet = Get-AzureRmVirtualNetwork `
 Add-AzureRmVirtualNetworkSubnetConfig -Name $subnetName `
     -VirtualNetwork $vnet -AddressPrefix 192.168.1.0/24
 
+Set-AzureRmVirtualNetwork -VirtualNetwork $vnet
 
-$vnet.id 
+
+
  
 # Get the region the Virtual network is in.
 $location = $vnet.Location
@@ -132,7 +152,7 @@ Set-AzureRmVirtualNetworkSubnetConfig `
     -VirtualNetwork $vnet `
     -Name $subnetName `
     -AddressPrefix $subnet.AddressPrefix `
-    -NetworkSecurityGroupId $nsg
+    -NetworkSecurityGroup $nsg
 
 Set-AzureRmVirtualNetwork -VirtualNetwork $vnet
 
@@ -201,7 +221,7 @@ New-AzureRmHDInsightCluster -ClusterName $clusterName `
     -VirtualNetworkId $vnet.Id `
     -SubnetName $subnetName 
 
-Get-AzureRmVirtualNetwork -ResourceGroupName $resourceGroupName -Name $vnetName
+#Get-AzureRmVirtualNetwork -ResourceGroupName $resourceGroupName -Name $vnetName
 
 #########################
 # create SQL database
