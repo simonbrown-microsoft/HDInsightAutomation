@@ -1,38 +1,29 @@
 ﻿#input parameters
 param (
-    [string]$token = $(throw "-token is required. This is the master label for the Resource Group, and all resources."), 
+    [string]$token = $(throw "-token is required. This is the master label for the Cluster, and all resources."), 
     [string]$username = $(throw "-username is required."),
     [string]$password = $( Read-Host -asSecureString "Input password" ),
     [string]$sshusername = $(throw "-username is required."),
     [string]$sshpassword = $( Read-Host -asSecureString "Input sshpassword" ),
     [string]$location = "Australia Southeast"   ,
-
+    [int]$clusterNodes = 1           # The number of nodes in the HDInsight cluster
 
 
 )
 
+Write-Progress -Activity "Creating Credentials" -PercentComplete 10
 #create credentials from parameter username/password combinations
+[securestring] $securepassword = convertto-securestring -String $password -AsPlainText -Force
+[securestring] $securesshpassword = convertto-securestring -String $sshpassword -AsPlainText -Force
+
 $credentials = new-object -typename System.Management.Automation.PSCredential `
-         -argumentlist $username, $password
+                ($username, (convertto-securestring -String $password -AsPlainText -Force))
 
 $sshCredentials = new-object -typename System.Management.Automation.PSCredential `
-         -argumentlist $sshusername, $sshpassword
-
-# Sign in to Azure
-try 
-{
-    $subscriptiondetails = Get-AzureRmSubscription
-}
-catch
-{
-    Write-Host "Can't get RM subscription information, not authenticated to a subscription" -ForegroundColor Red
-    Login-AzureRmAccount
-}
-finally
-{
-}
+         -argumentlist $sshusername, $securesshpassword
 
 
+Write-Progress -Activity "Setting Up Variables" -PercentComplete 20
 #variable setup
 $resourceGroupName = $token + "rg"      # Provide a Resource Group name
 $vnetName = $token + "vnet"             #provide virtual network name
@@ -40,8 +31,7 @@ $subnetName = $token + "hdisubnet"      # Provide a virtual network subnet name
 $clusterName = $token
 $defaultStorageAccountName = $token + "store"   # Provide a Storage account name
 $defaultStorageContainerName = $token + "container"
-  # Change the location if needed
-$clusterNodes = 1           # The number of nodes in the HDInsight cluster
+
 $sqlservername = $token + "dbserver"
 $sqldatabasename = $token + "db"
 
@@ -52,6 +42,7 @@ $sqldatabasename = $token + "db"
 # Create an Azure Resource Group
 New-AzureRmResourceGroup -Name $resourceGroupName -Location $location
 
+Write-Progress -Activity "Creating Storage Account" -PercentComplete 30
 # Create an Azure Storage account and container used as the default storage
 New-AzureRmStorageAccount `
     -ResourceGroupName $resourceGroupName `
@@ -73,6 +64,7 @@ $location = Get-AzureRmStorageAccount -ResourceGroupName $resourceGroupName -Sto
 # https://azure.microsoft.com/en-us/documentation/articles/hdinsight-extend-hadoop-virtual-network/
 ######################################################
 
+Write-Progress -Activity "Creating Virtual Network" -PercentComplete 40
 New-AzureRmVirtualNetwork -ResourceGroupName $resourceGroupName -Name $vnetName `
     -AddressPrefix 192.168.0.0/16 -Location $location   
 
@@ -95,6 +87,15 @@ Set-AzureRmVirtualNetwork -VirtualNetwork $vnet
 $location = $vnet.Location
 # Get the subnet object
 $subnet = $vnet.Subnets | Where-Object Name -eq $subnetName
+$subnetID = $subnet[0].id
+
+Write-Host $subnet -ForegroundColor Green
+Write-Host $subnetID -ForegroundColor Green  
+#$subnet
+
+
+
+
 # Create a new Network Security Group.
 # And add exemptions for the HDInsight health and management services.
 $nsg = New-AzureRmNetworkSecurityGroup `
@@ -219,15 +220,15 @@ New-AzureRmHDInsightCluster -ClusterName $clusterName `
     -SshCredential $sshCredentials `
     -config $config `
     -VirtualNetworkId $vnet.Id `
-    -SubnetName $subnetName 
+    -SubnetName $subnetID
 
 #Get-AzureRmVirtualNetwork -ResourceGroupName $resourceGroupName -Name $vnetName
 
 #########################
 # create SQL database
 #########################
-$sqladmin = Get-Credential
-$sqlserver = New-AzureRmSqlServer -ResourceGroupName $resourceGroupName -ServerName $sqlservername -Location $location -SqlAdministratorCredentials $sqladmin
-$sqldatabase = New-AzureRmSqlDatabase -DatabaseName $sqldatabasename -ServerName $sqlservername -ResourceGroupName $resourceGroupName
+#$sqladmin = Get-Credential
+#$sqlserver = New-AzureRmSqlServer -ResourceGroupName $resourceGroupName -ServerName $sqlservername -Location $location -SqlAdministratorCredentials $sqladmin
+#$sqldatabase = New-AzureRmSqlDatabase -DatabaseName $sqldatabasename -ServerName $sqlservername -ResourceGroupName $resourceGroupName
 
 
