@@ -204,6 +204,7 @@ $HDFSConfigValues = @{"io.compression.codecs"="org.apache.hadoop.io.compress.Gzi
 Yarn:
 yarn.application.classpath   /usr/hdp/current/custom/*
 #>
+$YarnConfigValues = @{"yarn.application.classpath"="$HADOOP_CONF_DIR,/usr/hdp/current/hadoop-client/*,/usr/hdp/current/hadoop-client/lib/*,/usr/hdp/current/hadoop-hdfs-client/*,/usr/hdp/current/hadoop-hdfs-client/lib/*,/usr/hdp/current/hadoop-yarn-client/*,/usr/hdp/current/hadoop-yarn-client/lib/*,/usr/hdp/current/custom/*"}
 
 <#
 Mapreduce:
@@ -212,7 +213,8 @@ SET mapreduce.output.fileoutputformat.compress=true;
 SET mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.CryptoCodec;
 #>
 $MapRedConfigValues = @{"mapreduce.output.fileoutputformat.compress"="true"
-    "mapreduce.output.fileoutputformat.compress.codec"="org.apache.hadoop.io.compress.CryptoCodec"}
+    "mapreduce.output.fileoutputformat.compress.codec"="org.apache.hadoop.io.compress.CryptoCodec"
+    "mapreduce.application.classpath"="$PWD/mr-framework/hadoop/share/hadoop/mapreduce/*:$PWD/mr-framework/hadoop/share/hadoop/mapreduce/lib/*:$PWD/mr-framework/hadoop/share/hadoop/common/*:$PWD/mr-framework/hadoop/share/hadoop/common/lib/*:$PWD/mr-framework/hadoop/share/hadoop/yarn/*:$PWD/mr-framework/hadoop/share/hadoop/yarn/lib/*:$PWD/mr-framework/hadoop/share/hadoop/hdfs/*:$PWD/mr-framework/hadoop/share/hadoop/hdfs/lib/*:$PWD/mr-framework/hadoop/share/hadoop/tools/lib/*:/usr/hdp/${hdp.version}/hadoop/lib/hadoop-lzo-0.6.0.${hdp.version}.jar:/etc/hadoop/conf/secure,/usr/hdp/current/custom/*"}
 
  
 <#
@@ -228,7 +230,11 @@ $config = New-AzureRmHDInsightClusterConfig `
         -StorageAccountName "$defaultStorageAccountName.blob.core.windows.net" `
         -StorageAccountKey $defaultStorageAccountKey `
     | Add-AzureRmHDInsightConfigValues `
+        -HiveSite $hiveConfigValues -MapRed $MapRedConfigValues -Hdfs $HdfsConfigValues -Yarn $YarnConfigValues 
+    | Add-AzureRmHDInsightScriptAction -Config $config -Name "InstallCrypto"  -NodeType HeadNode -Uri $scriptUri
+    | Add-AzureRmHDInsightScriptAction -Config $config -Name "InstallCrypto"  -NodeType WorkerNode -Uri $scriptUri
         -HiveSite $hiveConfigValues -MapRed $MapRedConfigValues -Hdfs $HdfsConfigValues
+
 
 #note - in the HDI cluster setup, the parameter -SubnetName acutally required the SUBNETID which is created at
 #subnet provisioning time
