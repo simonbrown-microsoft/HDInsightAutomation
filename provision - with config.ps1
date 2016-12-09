@@ -173,8 +173,7 @@ SET io.compression.codecs;
 classpath
 #>
 
-$HDFSConfigValues = @{ "hive.exec.compress.output"="true"
-                       "hive.exec.compress.intermediate"="true" }
+$HDFSConfigValues = @{"io.compression.codecs"="org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.SnappyCodec,org.apache.hadoop.io.compress.CryptoCodec" }
 
 <# 
 Yarn:
@@ -187,6 +186,8 @@ Classpath
 SET mapreduce.output.fileoutputformat.compress=true;
 SET mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.CryptoCodec;
 #>
+$MapRedConfigValues = @{"mapreduce.output.fileoutputformat.compress"="true"
+    "mapreduce.output.fileoutputformat.compress.codec"="org.apache.hadoop.io.compress.CryptoCodec"}
 
  
 <#
@@ -202,7 +203,7 @@ $config = New-AzureRmHDInsightClusterConfig `
         -StorageAccountName "$defaultStorageAccountName.blob.core.windows.net" `
         -StorageAccountKey $defaultStorageAccountKey `
     | Add-AzureRmHDInsightConfigValues `
-        -HiveSite $hiveConfigValues 
+        -HiveSite $hiveConfigValues -MapReduce $MapRedConfigValues -Hdfs $HdfsConfigValues
 
        
 
