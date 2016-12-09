@@ -230,14 +230,11 @@ $config = New-AzureRmHDInsightClusterConfig `
         -StorageAccountName "$defaultStorageAccountName.blob.core.windows.net" `
         -StorageAccountKey $defaultStorageAccountKey `
     | Add-AzureRmHDInsightConfigValues `
-<<<<<<< HEAD
         -HiveSite $hiveConfigValues -MapRed $MapRedConfigValues -Hdfs $HdfsConfigValues -Yarn $YarnConfigValues 
     | Add-AzureRmHDInsightScriptAction -Config $config -Name "InstallCrypto"  -NodeType HeadNode -Uri $scriptUri
     | Add-AzureRmHDInsightScriptAction -Config $config -Name "InstallCrypto"  -NodeType WorkerNode -Uri $scriptUri
-
-=======
         -HiveSite $hiveConfigValues -MapRed $MapRedConfigValues -Hdfs $HdfsConfigValues
->>>>>>> ae5ece7453611141b31e6004356d381652898909
+
 
 #note - in the HDI cluster setup, the parameter -SubnetName acutally required the SUBNETID which is created at
 #subnet provisioning time
