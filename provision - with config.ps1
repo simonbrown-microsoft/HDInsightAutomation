@@ -1,4 +1,8 @@
-﻿#input parameters
+﻿#todo - 
+# $token must only take lowecase characters
+
+
+#input parameters
 param (
     [string]$token = $(throw "-token is required. This is the master label for the Cluster, and all resources."), 
     [string]$username = $(throw "-username is required."),
@@ -75,7 +79,7 @@ $vnet = Get-AzureRmVirtualNetwork `
     -Name $vnetName `
     -ResourceGroupName $resourceGroupName
 
-Add-AzureRmVirtualNetworkSubnetConfig -Name $subnetName `
+$mysubnet = Add-AzureRmVirtualNetworkSubnetConfig -Name $subnetName `
     -VirtualNetwork $vnet -AddressPrefix 192.168.1.0/24
 
 Set-AzureRmVirtualNetwork -VirtualNetwork $vnet
@@ -89,9 +93,16 @@ $location = $vnet.Location
 $subnet = $vnet.Subnets | Where-Object Name -eq $subnetName
 $subnetID = $subnet[0].id
 
-Write-Host $subnet -ForegroundColor Green
-Write-Host $subnetID -ForegroundColor Green  
+$vnet2 = Get-AzureRmVirtualNetwork -Name $vnetName -ResourceGroupName $resourceGroupName
+$subnet2 = $vnet2.Subnets | Where-Object Name -eq $subnetName
+$subnet2ID = $subnet2[0].id
+
+
+Write-Host "vnet 1 subnet: $subnet" -ForegroundColor Green
+Write-Host "vnet 1 subnet id: $subnetID" -ForegroundColor Green  
 #$subnet
+Write-Host "vnet 2 subnet: $subnet2" -ForegroundColor Green
+Write-Host "vnet 2 subnet id: $subnet2ID" -ForegroundColor Green  
 
 
 
@@ -204,7 +215,7 @@ $config = New-AzureRmHDInsightClusterConfig `
     | Add-AzureRmHDInsightConfigValues `
         -HiveSite $hiveConfigValues 
 
-       
+
 
 New-AzureRmHDInsightCluster -ClusterName $clusterName `
     -ResourceGroupName $resourceGroupName `
@@ -220,7 +231,7 @@ New-AzureRmHDInsightCluster -ClusterName $clusterName `
     -SshCredential $sshCredentials `
     -config $config `
     -VirtualNetworkId $vnet.Id `
-    -SubnetName $subnetID
+    -SubnetName $subnet2ID
 
 #Get-AzureRmVirtualNetwork -ResourceGroupName $resourceGroupName -Name $vnetName
 
@@ -232,3 +243,4 @@ New-AzureRmHDInsightCluster -ClusterName $clusterName `
 #$sqldatabase = New-AzureRmSqlDatabase -DatabaseName $sqldatabasename -ServerName $sqlservername -ResourceGroupName $resourceGroupName
 
 
+#>
