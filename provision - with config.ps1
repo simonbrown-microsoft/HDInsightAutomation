@@ -10,8 +10,8 @@ param (
     [string]$sshusername = $(throw "-username is required."),
     [string]$sshpassword = $( Read-Host -asSecureString "Input sshpassword" ),
     [string]$location = "Australia Southeast"   ,
-    [int]$clusterNodes = 1           # The number of nodes in the HDInsight cluster
-
+    [int]$clusterNodes = 1,           # The number of nodes in the HDInsight cluster
+    [string]$HDIversion = "3.4"
 
 )
 
@@ -36,6 +36,9 @@ $clusterName = $token
 $defaultStorageAccountName = $token + "store"   # Provide a Storage account name
 $defaultStorageContainerName = $token + "container"
 
+$scriptStorageAccountName = $token + "scriptstore"
+$scriptStorageContainerName = $token + "container"
+
 $sqlservername = $token + "dbserver"
 $sqldatabasename = $token + "db"
 
@@ -56,6 +59,22 @@ New-AzureRmStorageAccount `
 $defaultStorageAccountKey = (Get-AzureRmStorageAccountKey -Name $defaultStorageAccountName -ResourceGroupName $resourceGroupName)[0].Value
 $destContext = New-AzureStorageContext -StorageAccountName $defaultStorageAccountName -StorageAccountKey $defaultStorageAccountKey
 New-AzureStorageContainer -Name $defaultStorageContainerName -Context $destContext
+
+Write-Progress -Activity "Creating Scripts Storage Account" -PercentComplete 35
+
+# Create an Azure Storage account and container used as the storage account for scripts
+New-AzureRmStorageAccount `
+    -ResourceGroupName $resourceGroupName `
+    -StorageAccountName $scriptStorageAccountName `
+    -Location $location `
+    -Type Standard_LRS
+$scriptStorageAccountKey = (Get-AzureRmStorageAccountKey -Name $scriptStorageAccountName -ResourceGroupName $resourceGroupName)[0].Value
+$destScriptContext = New-AzureStorageContext -StorageAccountName $scriptStorageAccountName -StorageAccountKey $scriptStorageAccountKey
+New-AzureStorageContainer -Name $scriptStorageContainerName -Context $destScriptContext
+
+$scriptBlobEndpoint = $destScriptContext.BlobEndPoint
+$scriptUri = "$scriptBlobEndpoint$scriptStorageContainerName"
+
 
 # Create an HDInsight cluster
 
@@ -93,16 +112,11 @@ $location = $vnet.Location
 $subnet = $vnet.Subnets | Where-Object Name -eq $subnetName
 $subnetID = $subnet[0].id
 
+#get the subnet object from the resource provider. This will have the provisioned VNET with the provisioned Subnets
+#this is necessary to get the SUBNETID, which is required in the HDI deployment config
 $vnet2 = Get-AzureRmVirtualNetwork -Name $vnetName -ResourceGroupName $resourceGroupName
 $subnet2 = $vnet2.Subnets | Where-Object Name -eq $subnetName
 $subnet2ID = $subnet2[0].id
-
-
-Write-Host "vnet 1 subnet: $subnet" -ForegroundColor Green
-Write-Host "vnet 1 subnet id: $subnetID" -ForegroundColor Green  
-#$subnet
-Write-Host "vnet 2 subnet: $subnet2" -ForegroundColor Green
-Write-Host "vnet 2 subnet id: $subnet2ID" -ForegroundColor Green  
 
 
 
@@ -214,9 +228,10 @@ $config = New-AzureRmHDInsightClusterConfig `
         -StorageAccountName "$defaultStorageAccountName.blob.core.windows.net" `
         -StorageAccountKey $defaultStorageAccountKey `
     | Add-AzureRmHDInsightConfigValues `
-        -HiveSite $hiveConfigValues -MapReduce $MapRedConfigValues -Hdfs $HdfsConfigValues
+        -HiveSite $hiveConfigValues -MapRed $MapRedConfigValues -Hdfs $HdfsConfigValues
 
-
+#note - in the HDI cluster setup, the parameter -SubnetName acutally required the SUBNETID which is created at
+#subnet provisioning time
 
 New-AzureRmHDInsightCluster -ClusterName $clusterName `
     -ResourceGroupName $resourceGroupName `
@@ -228,7 +243,7 @@ New-AzureRmHDInsightCluster -ClusterName $clusterName `
     -ClusterSizeInNodes $clusterNodes `
     -ClusterType Hadoop `
     -OSType Linux `
-    -Version "3.4" `
+    -Version $HDIversion `
     -SshCredential $sshCredentials `
     -config $config `
     -VirtualNetworkId $vnet.Id `
